@@ -1,15 +1,43 @@
-var game;
+var game; // 遊戲核心
+var model; // 遊戲模組(資料)
+var emitter; // 事件廣播者(類似呼叫監聽的對象?)
+var GameConstants; // 遊戲常數資料(?)
+var controller; // 遊戲(事件)控制器
+var mediaManager; // 設置音樂音效管理器
+
 // 瀏覽器讀取完成時觸發之方法，這裡拿來新建Phaser遊戲核心並啟動
 window.onload = function () {
-  // 遊戲設定設置
-  var config = {
-    type: Phaser.AUTO,
-    width: 480,
-    height: 640,
-    parent: "phaser-game",
-    // 匯入自製的場景"SceneMain"
-    scene: [SceneMain],
-  };
+  // 判斷當前使用裝置是否為手機
+  var isMobile = navigator.userAgent.indexOf("Mobile");
+  if (isMobile == -1) {
+    isMobile = navigator.userAgent.indexOf("Tablet");
+  }
+
+  if (isMobile == -1) {
+    // 遊戲設定設置
+    var config = {
+      type: Phaser.AUTO,
+      width: 480,
+      height: 640,
+      parent: "phaser-game",
+      // 匯入自製的場景"SceneMain"
+      scene: [SceneLoad, SceneTitle, SceneMain, SceneOver],
+    };
+  } else {
+    var config = {
+      type: Phaser.AUTO,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      parent: "phaser-game",
+      scene: [SceneLoad, SceneTitle, SceneMain, SceneOver],
+    };
+  }
+
+  // 新建遊戲常數資料(?)
+  GameConstants = new Constants();
+  // 新建遊戲模組(資料)
+  model = new Model();
+  model.isMobile = isMobile;
   // 新建遊戲核心
   game = new Phaser.Game(config);
 };

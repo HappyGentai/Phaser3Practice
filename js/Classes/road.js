@@ -36,6 +36,7 @@ class Road extends Phaser.GameObjects.Container {
         (this.displayHeight / 2) * 0.8,
         "cars"
       );
+      Align.scaleToGameW(this.car, 0.1);
       // 將車車加入道路群組中，發現原本生成的X和Y在加入容器後並不會校正數值，這是否代表著設置時都得要先想好該物件與容器中心之間的相對位置?
       this.add(this.car);
     }
@@ -45,6 +46,44 @@ class Road extends Phaser.GameObjects.Container {
       // 設置點按道路容器(道路,中心線&車車等...)觸發切換車車跑道位置功能
       this.back.on("pointerdown", this.changeLanes, this);
     }
+    {
+      // 障礙物相關設置
+      this.addObject();
+    }
+  }
+  addObject() {
+    // 建立一組物件資料陣列並利用隨機的方式配合物件資料Key值生成指定圖片
+    var objs = [
+      { key: "pcar1", speed: 12, scale: 10 },
+      { key: "pcar2", speed: 10, scale: 10 },
+      { key: "cone", speed: 20, scale: 5 },
+      { key: "barrier", speed: 20, scale: 8 },
+    ];
+    var index = Math.floor(Math.random() * objs.length);
+    // 設置生成障礙物之圖片索引值
+    var key = objs[index].key;
+    // 設置生成障礙物之速度
+    var speed = objs[index].speed;
+    // 設置生成障礙物之縮放比例
+    var scale = objs[index].scale / 100;
+    // 生成阻擋物物件
+    this.object = this.scene.add.sprite(
+      -this.displayWidth / 4,
+      -this.displayHeight / 2,
+      key
+    );
+    // 將新增之物件賦予速度參數，JS可以這樣憑空New參數也真夠噁的。
+    this.object.speed = speed;
+    // 隨機亂數並設置障礙物生成的位置
+    // 這隨機變數的值為(0~1)*100
+    var lane = Math.random() * 100;
+    if (lane < 50) {
+      this.object.x = this.displayWidth / 4;
+    }
+    // 隨遊戲場景寬做比例縮放
+    Align.scaleToGameW(this.object, scale);
+    // 將生成之物件加入道路群組中
+    this.add(this.object);
   }
   makeLines() {
     // 設置生成間隔距離(Y)，數值為道路容器之高/10
@@ -60,6 +99,9 @@ class Road extends Phaser.GameObjects.Container {
     }
   }
   moveLines() {
+    if (model.gameOver === true) {
+      return;
+    }
     // 對中心線群組利用迭代的方式(類似Foreach?)呼轎子物件並執行指定方法
     this.lineGroup.children.iterate(
       function (child) {
@@ -78,10 +120,54 @@ class Road extends Phaser.GameObjects.Container {
     }
   }
   changeLanes() {
+    if (model.gameOver === true) {
+      return;
+    }
+    mediaManager.playSound("whoosh");
+    // emitter.emit(GameConstants.PLAY_SOUND, "whoosh");
     if (this.car.x > 0) {
       this.car.x = -this.displayWidth / 4;
     } else {
       this.car.x = this.displayWidth / 4;
     }
+  }
+  moveObject() {
+    if (model.gameOver === true) {
+      return;
+    }
+    // 讓障礙物動起來
+    this.object.y += (this.vSpace / this.object.speed) * model.speed;
+    // 與車車碰撞檢測
+    if (Collision.checkCollide(this.car, this.object) === true) {
+      // this.car.alpha = 0.5;
+      this.scene.tweens.add({
+        targets: this.car,
+        duration: 600,
+        y: game.config.height / 2,
+        angle: -270,
+      });
+      model.gameOver = true;
+      mediaManager.playSound("boom");
+      // emitter.emit(GameConstants.PLAY_SOUND, "boom");
+      // console.log(this.scene.time);
+      this.scene.time.addEvent({
+        delay: 2000,
+        callback: this.goGameOver,
+        callbackScope: this.scene,
+        loop: false,
+      });
+    } else {
+      //this.car.alpha = 1;
+    }
+    if (this.object.y > game.config.height) {
+      // 當障礙物到達底部(畫面的高)時，破壞該障礙物並重新生成同時追加分數
+      emitter.emit(GameConstants.UP_POINTS, 1);
+      this.object.destroy();
+      this.addObject();
+    }
+  }
+
+  goGameOver() {
+    this.scene.start("SceneOver");
   }
 }
